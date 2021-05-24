@@ -37,7 +37,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+void Count2rpm();
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
