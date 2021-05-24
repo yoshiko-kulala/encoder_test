@@ -27,7 +27,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#define motor_pr 1440.0 //motor P/R
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -47,6 +47,7 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim10;
 
 UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
 
@@ -61,18 +62,19 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM10_Init(void);
+static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int pwm[4] = { 0 };
+float pwm[4] = { 0 };
 void Count2rpm() {
-	pwm[0] = (TIM1->CNT - 30000) * 10;
-	pwm[1] = (TIM2->CNT - 30000) * 10;
-	pwm[2] = (TIM3->CNT - 30000) * 10;
-	pwm[3] = (TIM4->CNT - 30000) * 10;
+	pwm[0] = (((float) TIM1->CNT - 30000.0) * 600.0) / motor_pr;
+	pwm[1] = (((float) TIM2->CNT - 30000.0) * 600.0) / motor_pr;
+	pwm[2] = (((float) TIM3->CNT - 30000.0) * 600.0) / motor_pr;
+	pwm[3] = (((float) TIM4->CNT - 30000.0) * 600.0) / motor_pr;
 	TIM1->CNT = 30000;
 	TIM2->CNT = 30000;
 	TIM3->CNT = 30000;
@@ -134,7 +136,10 @@ int main(void) {
 	MX_TIM2_Init();
 	MX_TIM4_Init();
 	MX_TIM10_Init();
+	MX_USART6_UART_Init();
 	/* USER CODE BEGIN 2 */
+	uint8_t buf[5];
+	uint16_t tx_rpm[4] = { 500, 500, 500, 500 };
 	if (HAL_TIM_Encoder_Init(&htim1, &sConfig1) != HAL_OK) {
 		Error_Handler();
 	}
@@ -164,7 +169,16 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
-		xprintf("%d\t,\t%d\t,\t%d\t,\t%d\r\n", pwm[0], pwm[1], pwm[2], pwm[3]);
+		for (int i = 0; i < 4; i++) {
+			tx_rpm[i] = pwm[i] + 500;
+		}
+		buf[0] = (tx_rpm[0] & 0xFF); //0から8桁
+		buf[1] = (((tx_rpm[0] >> 8) + (tx_rpm[1] << 2)) & 0xFF); //0から2桁、1から6桁
+		buf[2] = (((tx_rpm[1] >> 6) + (tx_rpm[2] << 4)) & 0xFF); //1から4桁、2から4桁
+		buf[3] = (((tx_rpm[2] >> 4) + (tx_rpm[3] << 6)) & 0xFF); //2から6桁、3から2桁
+		buf[4] = ((tx_rpm[3] >> 2) & 0xFF);
+		HAL_UART_Transmit(&huart6, buf, sizeof(buf), 0xFFFF);
+		HAL_Delay(100);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
@@ -230,7 +244,7 @@ static void MX_TIM1_Init(void) {
 
 	/* USER CODE END TIM1_Init 1 */
 	htim1.Instance = TIM1;
-	htim1.Init.Prescaler = 10;
+	htim1.Init.Prescaler = 1;
 	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim1.Init.Period = 59999;
 	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -277,7 +291,7 @@ static void MX_TIM2_Init(void) {
 
 	/* USER CODE END TIM2_Init 1 */
 	htim2.Instance = TIM2;
-	htim2.Init.Prescaler = 10;
+	htim2.Init.Prescaler = 1;
 	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim2.Init.Period = 59999;
 	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -317,13 +331,14 @@ static void MX_TIM3_Init(void) {
 
 	/* USER CODE END TIM3_Init 0 */
 
-	//TIM_Encoder_InitTypeDef sConfig = {0};
-	//TIM_MasterConfigTypeDef sMasterConfig = {0};
+	TIM_Encoder_InitTypeDef sConfig = { 0 };
+	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
+
 	/* USER CODE BEGIN TIM3_Init 1 */
 
 	/* USER CODE END TIM3_Init 1 */
 	htim3.Instance = TIM3;
-	htim3.Init.Prescaler = 10;
+	htim3.Init.Prescaler = 1;
 	htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim3.Init.Period = 59999;
 	htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -363,13 +378,14 @@ static void MX_TIM4_Init(void) {
 
 	/* USER CODE END TIM4_Init 0 */
 
-	//TIM_Encoder_InitTypeDef sConfig = {0};
-	//TIM_MasterConfigTypeDef sMasterConfig = {0};
+	TIM_Encoder_InitTypeDef sConfig = { 0 };
+	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
+
 	/* USER CODE BEGIN TIM4_Init 1 */
 
 	/* USER CODE END TIM4_Init 1 */
 	htim4.Instance = TIM4;
-	htim4.Init.Prescaler = 10;
+	htim4.Init.Prescaler = 1;
 	htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim4.Init.Period = 59999;
 	htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -455,6 +471,37 @@ static void MX_USART2_UART_Init(void) {
 	/* USER CODE BEGIN USART2_Init 2 */
 
 	/* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+ * @brief USART6 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_USART6_UART_Init(void) {
+
+	/* USER CODE BEGIN USART6_Init 0 */
+
+	/* USER CODE END USART6_Init 0 */
+
+	/* USER CODE BEGIN USART6_Init 1 */
+
+	/* USER CODE END USART6_Init 1 */
+	huart6.Instance = USART6;
+	huart6.Init.BaudRate = 115200;
+	huart6.Init.WordLength = UART_WORDLENGTH_8B;
+	huart6.Init.StopBits = UART_STOPBITS_1;
+	huart6.Init.Parity = UART_PARITY_NONE;
+	huart6.Init.Mode = UART_MODE_TX_RX;
+	huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+	if (HAL_UART_Init(&huart6) != HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN USART6_Init 2 */
+
+	/* USER CODE END USART6_Init 2 */
 
 }
 
